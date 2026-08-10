@@ -1,0 +1,6 @@
+node_modules/
+npm-debug.log*
+*.log
+
+# Scan output people may export next to the tool
+cloak-pii-report.*

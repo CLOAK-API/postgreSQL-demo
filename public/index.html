@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CLOAK — PII Discovery for PostgreSQL</title>
+<!-- Webfonts are a progressive enhancement: the CSS falls back to a full
+     system stack if these are blocked or the machine is offline. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-glyph logo-mark on-dark" aria-hidden="true">
+        <svg viewBox="0 0 512 512" aria-hidden="true" focusable="false">
+          <rect x="60" y="128" width="400" height="88" rx="44" fill="var(--l1)"/>
+          <rect x="50" y="256" width="300" height="88" rx="44" fill="var(--l2)"/>
+          <rect x="50" y="384" width="190" height="72" rx="36" fill="var(--l3)"/>
+          <circle cx="420" cy="300" r="48" fill="var(--ld)"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        <span class="brand-mark">CLOAK Discovery</span>
+        <span class="brand-sub">PII classification for PostgreSQL</span>
+      </span>
+    </div>
+    <div class="header-meta" id="header-meta"></div>
+  </div>
+</header>
+
+<main class="shell">
+  <div id="alert-slot"></div>
+
+  <!-- 1 — connection -->
+  <section class="panel" id="panel-connect">
+    <div class="panel-head">
+      <span class="step-num">1</span>
+      <div>
+        <h2>Connect</h2>
+        <p class="panel-sub">Read-only. Every session sets <code>default_transaction_read_only</code> and a 15s statement timeout.</p>
+      </div>
+    </div>
+
+    <div class="panel-body">
+      <div class="field-row">
+        <div class="field" style="flex:2 1 420px">
+          <label class="field-label" for="connection-string">PostgreSQL connection string<span class="info" tabindex="0" role="note" aria-label="Standard libpq URL: postgresql://user:password@host:5432/database. Point it at a read-only role where you can - the scanner only ever issues SELECT, but least privilege is still the right call." data-tip="Standard libpq URL: postgresql://user:password@host:5432/database. Point it at a read-only role where you can - the scanner only ever issues SELECT, but least privilege is still the right call."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 16.5v-5"/><path d="M12 8h.01"/></svg></span></label>
+          <input class="input input-mono" id="connection-string" type="text" spellcheck="false"
+                 placeholder="postgresql://user:password@host:5432/database" autocomplete="off" />
+          <p class="field-hint">Or use the individual fields below.</p>
+        </div>
+        <div class="field" style="flex:0 0 210px">
+          <label class="field-label" for="ssl-mode">SSL mode<span class="info" tabindex="0" role="note" aria-label="Auto uses TLS for remote hosts and plain TCP for localhost. Hosted Postgres (Neon, Supabase, RDS) usually needs Require. Use Require + verify only when the server presents a certificate this machine already trusts." data-tip="Auto uses TLS for remote hosts and plain TCP for localhost. Hosted Postgres (Neon, Supabase, RDS) usually needs Require. Use Require + verify only when the server presents a certificate this machine already trusts."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 16.5v-5"/><path d="M12 8h.01"/></svg></span></label>
+          <select class="input" id="ssl-mode">
+            <option value="auto">Auto (recommended)</option>
+            <option value="require">Require (skip verification)</option>
+            <option value="verify-full">Require + verify certificate</option>
+            <option value="disable">Disable</option>
+          </select>
+        </div>
+      </div>
+
+      <details class="disclosure" id="fields-disclosure">
+        <summary>Enter host, port, database, user and password separately</summary>
+        <div class="field-row">
+          <div class="field"><label class="field-label" for="db-host">Host</label>
+            <input class="input" id="db-host" type="text" placeholder="localhost" autocomplete="off" /></div>
+          <div class="field" style="flex:0 0 110px"><label class="field-label" for="db-port">Port</label>
+            <input class="input" id="db-port" type="number" placeholder="5432" autocomplete="off" /></div>
+          <div class="field"><label class="field-label" for="db-name">Database</label>
+            <input class="input" id="db-name" type="text" placeholder="appdb" autocomplete="off" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label class="field-label" for="db-user">User</label>
+            <input class="input" id="db-user" type="text" placeholder="readonly_user" autocomplete="off" /></div>
+          <div class="field"><label class="field-label" for="db-pass">Password</label>
+            <input class="input" id="db-pass" type="password" placeholder="••••••••" autocomplete="new-password" /></div>
+        </div>
+      </details>
+
+      <hr class="rule" />
+
+      <div class="field-row">
+        <div class="field" style="flex:0 1 170px">
+          <label class="field-label" for="cloak-provider">Provider<span class="info" tabindex="0" role="note" aria-label="Which detection API this endpoint is. Providers differ in request shape, so picking the right one matters - it also sets the correct auth header and endpoint path for you." data-tip="Which detection API this endpoint is. Providers differ in request shape, so picking the right one matters - it also sets the correct auth header and endpoint path for you."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 16.5v-5"/><path d="M12 8h.01"/></svg></span></label>
+          <select class="input" id="cloak-provider"></select>
+        </div>
+        <div class="field" style="flex:2 1 340px">
+          <label class="field-label" for="cloak-endpoint">API endpoint</label>
+          <input class="input input-mono" id="cloak-endpoint" type="text" spellcheck="false"
+                 placeholder="https://api.cloak-ai.co/api/v1/detect" autocomplete="off" />
+          <div id="endpoint-warning"></div>
+        </div>
+        <div class="field" style="flex:1 1 220px">
+          <label class="field-label" for="cloak-auth">Auth header<span class="info" tabindex="0" role="note" aria-label="How the key is presented to the API. Send Bearer for CLOAK itself. If the endpoint sits behind AWS and you see an error about the Authorization header or a missing equal-sign, switch to x-api-key - AWS reserves Authorization for its own SigV4 signature." data-tip="How the key is presented to the API. Send Bearer for CLOAK itself. If the endpoint sits behind AWS and you see an error about the Authorization header or a missing equal-sign, switch to x-api-key - AWS reserves Authorization for its own SigV4 signature."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 16.5v-5"/><path d="M12 8h.01"/></svg></span></label>
+          <select class="input" id="cloak-auth"></select>
+        </div>
+        <div class="field" style="flex:2 1 300px">
+          <label class="field-label" for="cloak-key">API key<span class="info" tabindex="0" role="note" aria-label="Sent to this local server and used only for the duration of the scan. It is never written to disk, never saved in your browser, and never returned to this page." data-tip="Sent to this local server and used only for the duration of the scan. It is never written to disk, never saved in your browser, and never returned to this page."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 16.5v-5"/><path d="M12 8h.01"/></svg></span></label>
+          <input class="input" id="cloak-key" type="password" placeholder="cloak_live_…" autocomplete="new-password" />
+          <p class="field-hint">Sent to this server only — never stored, never returned to the browser.</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-ghost" id="btn-test-api">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M13 2L4 13.5h7L10 22l9-11.5h-7z"/></svg>
+          Test API
+        </button>
+        <span class="inline-status" id="test-api-status"></span>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" id="btn-inspect">
+          <svg class="icon" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.66 3.58 3 8 3s8-1.34 8-3v-13"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg>
+          Connect &amp; inspect
+        </button>
+        <span class="inline-status" id="inspect-status"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 — detection profile -->
+  <section class="panel is-hidden" id="panel-types">
+    <div class="panel-head">
+      <span class="step-num">2</span>
+      <div style="min-width:0">
+        <h2>Detection profile
+          <span class="info" tabindex="0" role="note" aria-label="Which entity types appear in the report. CLOAK always classifies all 60 types on every call, so this filters what you SEE - it does not reduce scan time or API usage. Start from a preset, then tick individual types. Your selection is remembered in this browser." data-tip="Which entity types appear in the report. CLOAK always classifies all 60 types on every call, so this filters what you SEE - it does not reduce scan time or API usage. Start from a preset, then tick individual types. Your selection is remembered in this browser."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 16.5v-5"/><path d="M12 8h.01"/></svg></span>
+        </h2>
+        <p class="panel-sub" id="types-summary">Loading entity types…</p>
+      </div>
+      <div class="panel-actions">
+        <button class="btn btn-quiet btn-sm is-hidden" id="btn-select-all">Select all</button>
+        <button class="btn btn-quiet btn-sm is-hidden" id="btn-select-none">Clear</button>
+        <button class="btn btn-ghost btn-sm" id="btn-toggle-types" aria-expanded="false"
+                aria-controls="types-body">
+          <svg class="icon chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          <span id="toggle-types-label">Customise</span>
+        </button>
+      </div>
+    </div>
+    <div class="panel-body is-collapsed" id="types-body">
+      <div class="picker-toolbar">
+        <div class="preset-row" id="preset-row"></div>
+        <span class="picker-count" id="picker-count"></span>
+      </div>
+      <input class="input input-search" id="type-filter" type="search" placeholder="Filter entity types…" />
+      <div class="type-groups" id="type-groups"></div>
+    </div>
+  </section>
+
+  <!-- 3 — scope -->
+  <section class="panel is-hidden" id="panel-scope">
+    <div class="panel-head">
+      <span class="step-num">3</span>
+      <div>
+        <h2>Scan scope</h2>
+        <p class="panel-sub" id="scope-sub"></p>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="stat-row" id="inventory-stats"></div>
+
+      <!-- Ordered widest-to-narrowest: what to scan, then how much of it, then
+           which sources are eligible. -->
+      <div class="field-row">
+        <div class="field" style="flex:1 1 100%">
+          <label class="field-label">Schemas<span class="info" tabindex="0" role="note" aria-label="Which schemas to include. Narrowing this is the fastest way to shorten a scan, because every column costs one CLOAK request." data-tip="Which schemas to include. Narrowing this is the fastest way to shorten a scan, because every column costs one CLOAK request."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 16.5v-5"/><path d="M12 8h.01"/></svg></span></label>
+          <div class="preset-row" id="schema-select"></div>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field" style="flex:0 1 200px">
+          <label class="field-label" for="rows-per-column">Rows per column<span class="info" tabindex="0" role="note" aria-label="How many non-null values are read from each column and classified together. More rows means better coverage of that column, but it does NOT change the number of API requests - it is still one request per column." data-tip="How many non-null values are read from each column and classified together. More rows means better coverage of that column, but it does NOT change the number of API requests - it is still one request per column."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 16.5v-5"/><path d="M12 8h.01"/></svg></span></label>
+          <input class="input" id="rows-per-column" type="number" value="40" min="5" max="500" />
+        </div>
+        <div class="field" style="flex:0 1 200px">
+          <label class="field-label" for="max-columns">Max columns<span class="info" tabindex="0" role="note" aria-label="Hard cap on how many columns the scan will touch. Each column costs one CLOAK request, so this is your main control over how long the scan takes." data-tip="Hard cap on how many columns the scan will touch. Each column costs one CLOAK request, so this is your main control over how long the scan takes."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 16.5v-5"/><path d="M12 8h.01"/></svg></span></label>
+          <input class="input" id="max-columns" type="number" value="60" min="1" max="500" />
+        </div>
+        <div class="field" style="flex:0 1 210px">
+          <label class="field-label">Coverage<span class="info" tabindex="0" role="note" aria-label="Scan the whole connected database: every schema, and every text column in it, with no cap. This is the complete picture, but it costs one API request per column and is paced by your plan's rate limit - check the estimate below before starting." data-tip="Scan the whole connected database: every schema, and every text column in it, with no cap. This is the complete picture, but it costs one API request per column and is paced by your plan's rate limit - check the estimate below before starting."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 16.5v-5"/><path d="M12 8h.01"/></svg></span></label>
+          <div class="check-row">
+            <label class="check"><input type="checkbox" id="scan-all" /> Entire database</label>
+          </div>
+        </div>
+        <div class="field" style="flex:1 1 260px">
+          <label class="field-label">Sources<span class="info" tabindex="0" role="note" aria-label="Which kinds of column are eligible. JSON and JSONB documents often carry PII in free-form keys that no column name hints at. Views are off by default because they usually re-expose columns from the tables underneath, which would bill you a second request for the same data." data-tip="Which kinds of column are eligible. JSON and JSONB documents often carry PII in free-form keys that no column name hints at. Views are off by default because they usually re-expose columns from the tables underneath, which would bill you a second request for the same data."><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 16.5v-5"/><path d="M12 8h.01"/></svg></span></label>
+          <div class="check-row">
+            <label class="check"><input type="checkbox" id="include-json" checked /> JSON / JSONB</label>
+            <label class="check"><input type="checkbox" id="include-views" /> Views</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="budget" id="budget"></div>
+
+      <div class="controls">
+        <button class="btn btn-primary" id="btn-scan">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg>
+          Run discovery scan
+        </button>
+        <button class="btn btn-ghost is-hidden" id="btn-cancel">Cancel</button>
+        <span class="inline-status" id="scan-status"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 — progress -->
+  <section class="panel is-hidden" id="panel-progress">
+    <div class="panel-head">
+      <span class="step-num">4</span>
+      <div>
+        <h2>Scanning</h2>
+        <p class="panel-sub" id="progress-phase">Starting…</p>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+      <div class="meta-row" id="progress-meta"></div>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+
+  <!-- 5 — report -->
+  <section class="panel is-hidden" id="panel-results">
+    <div class="panel-head">
+      <span class="step-num">5</span>
+      <div>
+        <h2>Discovery report</h2>
+        <p class="panel-sub" id="report-sub"></p>
+      </div>
+      <div class="panel-actions">
+        <button class="btn btn-ghost btn-sm" id="btn-print">Print / PDF</button>
+        <button class="btn btn-ghost btn-sm" id="btn-export-json">JSON</button>
+        <button class="btn btn-ghost btn-sm" id="btn-export-csv">CSV</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div id="report"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="app-footer">
+  <div class="shell">
+    <span class="logo-mark on-light footer-mark" aria-hidden="true">
+      <svg viewBox="0 0 512 512" aria-hidden="true" focusable="false">
+        <rect x="60" y="128" width="400" height="88" rx="44" fill="var(--l1)"/>
+        <rect x="50" y="256" width="300" height="88" rx="44" fill="var(--l2)"/>
+        <rect x="50" y="384" width="190" height="72" rx="36" fill="var(--l3)"/>
+        <circle cx="420" cy="300" r="48" fill="var(--ld)"/>
+        </svg>
+    </span>
+    <span class="footer-line">Read-only discovery scan · values are sampled and classified, never written back.</span>
+    <span class="disclaimer">Model may make mistakes.</span>
+  </div>
+</footer>
+
+<script src="/favicon.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
